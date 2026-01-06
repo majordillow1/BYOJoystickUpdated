@@ -11,6 +11,7 @@ namespace BYOJoystick.Managers
         public override string ShortName   => "T55Rear";
         public override bool   IsMulticrew => true;
         public override bool   IsSeatA     => false;
+        public override string VehicleName => "T-55";
 
         private static string Dash           => "PassengerOnlyObjs/DashCanvasRear";
         private static string Seat           => "RearSeatParent";

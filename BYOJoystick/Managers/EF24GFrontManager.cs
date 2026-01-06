@@ -12,6 +12,7 @@ namespace BYOJoystick.Managers
         public override string ShortName   => "EF24GFront";
         public override bool   IsMulticrew => true;
         public override bool   IsSeatA     => true;
+        public override string VehicleName => "EF-24G";
 
         private static string Cockpit        => "PassengerOnlyObjs/FrontCockpit";
         private static string Seat           => "FrontSeatParent";

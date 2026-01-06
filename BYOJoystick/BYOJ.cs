@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BYOJoystick.Bindings;
 using BYOJoystick.Config;
 using BYOJoystick.Managers;
+using BYOJoystick.Managers.Dynamic;
 using BYOJoystick.UI;
 using SharpDX.DirectInput;
 using UnityEngine;
@@ -56,25 +58,43 @@ namespace BYOJoystick
 
             UpdateConnectedJoysticks();
 
-            AddManager(new AV42CManager());
-            AddManager(new FA26BManager());
-            AddManager(new F45AManager());
-            AddManager(new AH94FrontManager());
-            AddManager(new AH94RearManager());
-            AddManager(new T55FrontManager());
-            AddManager(new T55RearManager());
-            AddManager(new EF24GFrontManager());
-            AddManager(new EF24GRearManager());
+            DiscoverManagers();
 
             ConfigManager.Initialise(Managers);
             BYOJUI.Initialise();
         }
 
-        private static void AddManager(Manager manager)
+        private static void DiscoverManagers()
         {
-            manager.Initialise();
-            Managers.Add(manager);
-            ManagerLookup.Add(manager.ShortName, manager);
+            Managers.Clear();
+            ManagerLookup.Clear();
+
+            var managerType = typeof(Manager);
+            var types       = Assembly.GetExecutingAssembly().GetTypes();
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                var type = types[i];
+                if (type.IsAbstract || !managerType.IsAssignableFrom(type))
+                    continue;
+
+                try
+                {
+                    var manager = (Manager)Activator.CreateInstance(type);
+                    manager.Initialise();
+                    Managers.Add(manager);
+                    if (ManagerLookup.ContainsKey(manager.ShortName))
+                        Plugin.Log($"Duplicate manager short name {manager.ShortName} detected, skipping registration for {type.Name}.");
+                    else
+                        ManagerLookup.Add(manager.ShortName, manager);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log($"Failed to initialise manager {type.Name}: {ex.Message}");
+                }
+            }
+
+            Plugin.Log($"Registered {Managers.Count} managers for vehicle detection.");
         }
 
         public static Manager GetManager(string shortName)
@@ -226,8 +246,13 @@ namespace BYOJoystick
             if (slot == null)
                 return;
             Plugin.Log($"Got seat index {slot.crewSeatIdx}");
-            string shortName = GetShortName(playerVehicle.vehicleName, slot.crewSeatIdx == 0);
-            SetActiveManager(GetManager(shortName), vehicle);
+            var manager = GetManagerForVehicle(playerVehicle.vehicleName, slot.crewSeatIdx == 0, true);
+            if (manager == null)
+            {
+                Plugin.Log($"No manager registered for vehicle {playerVehicle.vehicleName} seat {(slot.crewSeatIdx == 0 ? "A" : "B")}");
+                return;
+            }
+            SetActiveManager(manager, vehicle);
         }
 
         private static void SelectManagerSinglePlayer()
@@ -248,30 +273,46 @@ namespace BYOJoystick
             var pilotSwitcher = FindObjectOfType<AH94PilotSwitcher>();
             if (pilotSwitcher == null)
             {
-                string shortName = GetShortName(playerVehicle.vehicleName);
-                SetActiveManager(GetManager(shortName), vehicle);
+                var manager = GetManagerForVehicle(playerVehicle.vehicleName);
+                if (manager == null)
+                {
+                    Plugin.Log($"No manager registered for vehicle {playerVehicle.vehicleName}");
+                    return;
+                }
+                SetActiveManager(manager, vehicle);
             }
             else
             {
                 _spSeatSwitcher = pilotSwitcher.GetComponent<ABObjectToggler>();
-                string shortName = GetShortName(playerVehicle.vehicleName, _spSeatSwitcher.isA);
-                SetActiveManager(GetManager(shortName), vehicle);
+                var manager = GetManagerForVehicle(playerVehicle.vehicleName, _spSeatSwitcher.isA, true);
+                if (manager == null)
+                {
+                    Plugin.Log($"No manager registered for vehicle {playerVehicle.vehicleName} seat {(_spSeatSwitcher.isA ? "A" : "B")}");
+                    return;
+                }
+                SetActiveManager(manager, vehicle);
             }
         }
 
-        private static string GetShortName(string vehicleName, bool isSeatA = true)
+        private static Manager GetManagerForVehicle(string vehicleName, bool isSeatA = true, bool isMulticrew = false)
         {
-            // A is the front seat, B is the rear seat, except for the AH-94 where it's the opposite
-            return vehicleName switch
+            for (int i = 0; i < Managers.Count; i++)
             {
-                "AV-42C"  => "AV42C",
-                "F/A-26B" => "FA26B",
-                "F-45A"   => "F45A",
-                "AH-94"   => isSeatA ? "AH94Rear" : "AH94Front",
-                "T-55"    => isSeatA ? "T55Front" : "T55Rear",
-                "EF-24G"  => isSeatA ? "EF24GFront" : "EF24GRear",
-                _         => throw new InvalidOperationException($"Vehicle {vehicleName} not supported")
-            };
+                var manager = Managers[i];
+                if (!string.Equals(manager.VehicleName, vehicleName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!manager.IsMulticrew || manager.IsSeatA == isSeatA)
+                    return manager;
+            }
+
+            var dynamicManager = Dynamic.DynamicManager.Create(vehicleName, isMulticrew, isSeatA);
+            dynamicManager.Initialise();
+            Managers.Add(dynamicManager);
+            if (!ManagerLookup.ContainsKey(dynamicManager.ShortName))
+                ManagerLookup.Add(dynamicManager.ShortName, dynamicManager);
+            Plugin.Log($"Created dynamic manager {dynamicManager.ShortName} for vehicle {vehicleName} seat {(isSeatA ? "A" : "B")}{(isMulticrew ? " (multicrew)" : string.Empty)}.");
+            return dynamicManager;
         }
 
         public static void ReloadActiveManager()

@@ -13,6 +13,7 @@ namespace BYOJoystick.Managers
         public override string ShortName   => "AH94Rear";
         public override bool   IsMulticrew => true;
         public override bool   IsSeatA     => true;
+        public override string VehicleName => "AH-94";
 
         private static string Dash           => "PassengerOnlyObjects/DashCanvas/Rear";
         private static string UpFrontDisplay => "PassengerOnlyObjects/DashCanvas/Rear/UpfrontDisplay_rear";

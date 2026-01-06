@@ -12,6 +12,7 @@ namespace BYOJoystick.Managers.Base
         public abstract string ShortName   { get; }
         public abstract bool   IsMulticrew { get; }
         public virtual  bool   IsSeatA     { get; }
+        public virtual  string VehicleName => GameName;
 
         public Dictionary<ActionCategory, List<ControlAction>> ControlActionsByCategory { get; } = new Dictionary<ActionCategory, List<ControlAction>>();
 
