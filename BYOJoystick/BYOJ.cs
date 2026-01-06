@@ -78,6 +78,12 @@ namespace BYOJoystick
                 if (type.IsAbstract || !managerType.IsAssignableFrom(type))
                     continue;
 
+                if (type.GetConstructor(Type.EmptyTypes) == null)
+                {
+                    Plugin.Log($"Skipping manager type {type.Name} because it has no parameterless constructor.");
+                    continue;
+                }
+
                 try
                 {
                     var manager = (Manager)Activator.CreateInstance(type);
