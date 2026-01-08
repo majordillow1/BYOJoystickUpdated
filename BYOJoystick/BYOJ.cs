@@ -111,6 +111,12 @@ namespace BYOJoystick
             }
 
             Joysticks.Sort((a, b) => string.Compare(a.Information.InstanceName, b.Information.InstanceName, StringComparison.Ordinal));
+            Plugin.Log($"Detected {Joysticks.Count} connected joystick(s).");
+            for (int i = 0; i < Joysticks.Count; i++)
+            {
+                var joystick = Joysticks[i];
+                Plugin.Log($"Joystick {i + 1}: {joystick.Information.ProductName} ({joystick.Information.InstanceName}) - {joystick.Information.InstanceGuid}");
+            }
         }
 
         public static BYOJJoystick GetConnectedJoystick(Guid joystickId)
@@ -227,6 +233,7 @@ namespace BYOJoystick
                 return;
             Plugin.Log($"Got seat index {slot.crewSeatIdx}");
             string shortName = GetShortName(playerVehicle.vehicleName, slot.crewSeatIdx == 0);
+            Plugin.Log($"Detected vehicle name {playerVehicle.vehicleName}, seatA={slot.crewSeatIdx == 0}, shortName={shortName}");
             SetActiveManager(GetManager(shortName), vehicle);
         }
 
@@ -249,12 +256,14 @@ namespace BYOJoystick
             if (pilotSwitcher == null)
             {
                 string shortName = GetShortName(playerVehicle.vehicleName);
+                Plugin.Log($"Detected vehicle name {playerVehicle.vehicleName}, seatA=true, shortName={shortName}");
                 SetActiveManager(GetManager(shortName), vehicle);
             }
             else
             {
                 _spSeatSwitcher = pilotSwitcher.GetComponent<ABObjectToggler>();
                 string shortName = GetShortName(playerVehicle.vehicleName, _spSeatSwitcher.isA);
+                Plugin.Log($"Detected vehicle name {playerVehicle.vehicleName}, seatA={_spSeatSwitcher.isA}, shortName={shortName}");
                 SetActiveManager(GetManager(shortName), vehicle);
             }
         }
