@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.IO;
 using System.Reflection;
@@ -14,7 +15,9 @@ namespace BYOJoystick
         
         public static void Log(object msg)
         {
-            Debug.Log($"[BYOJ] {msg}");
+            var message = $"[BYOJ] {msg}";
+            Debug.Log(message);
+            TryWriteLogFile(message);
         }
 
         private void Awake()
@@ -67,6 +70,23 @@ namespace BYOJoystick
             BYOJ.Unload();
             Destroy(BYOJ.gameObject);
             Destroy(this);
+        }
+
+        private static void TryWriteLogFile(string message)
+        {
+            try
+            {
+                if (!Directory.Exists(PilotSaveManager.saveDataPath))
+                    Directory.CreateDirectory(PilotSaveManager.saveDataPath);
+
+                var logPath = Path.Combine(PilotSaveManager.saveDataPath, "BYOJ_log.txt");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                File.AppendAllText(logPath, $"[{timestamp}] {message}{Environment.NewLine}");
+            }
+            catch (Exception ex)
+            {
+                Debug.Log($"[BYOJ] Failed to write log file: {ex.Message}");
+            }
         }
     }
 }
