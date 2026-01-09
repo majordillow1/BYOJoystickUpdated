@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Reflection;
 using BYOJoystick.Bindings;
 using BYOJoystick.Controls.Sync;
@@ -14,6 +15,9 @@ namespace BYOJoystick.Controls
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo StopInteractionMethod = typeof(VRButton).GetMethod(
             "Vrint_OnStopInteraction",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo WhileInteractingRoutineMethod = typeof(VRInteractable).GetMethod(
+            "WhileInteractingRoutine",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         protected readonly VRInteractable               Interactable;
         protected readonly InteractableSyncWrapper      SyncWrapper;
@@ -59,7 +63,7 @@ namespace BYOJoystick.Controls
 
                 if (c.Interactable.OnInteracting == null)
                     return;
-                c.Interactable.StartCoroutine(c.Interactable.WhileInteractingRoutine());
+                StartWhileInteractingRoutine(c.Interactable);
             }
             else
             {
@@ -83,6 +87,26 @@ namespace BYOJoystick.Controls
             }
 
             method.Invoke(button, new object[] { null });
+        }
+
+        private static void StartWhileInteractingRoutine(VRInteractable interactable)
+        {
+            if (interactable == null || WhileInteractingRoutineMethod == null)
+            {
+                return;
+            }
+
+            if (WhileInteractingRoutineMethod.Invoke(interactable, null) is not IEnumerator routine)
+            {
+                return;
+            }
+
+            if (interactable is not MonoBehaviour behaviour)
+            {
+                return;
+            }
+
+            behaviour.StartCoroutine(routine);
         }
     }
 }
