@@ -96,12 +96,14 @@ namespace BYOJoystick.Controls
                 return;
             }
 
-            if (WhileInteractingRoutineMethod.Invoke(interactable, null) is not IEnumerator routine)
+            var routine = WhileInteractingRoutineMethod.Invoke(interactable, null) as IEnumerator;
+            if (routine == null)
             {
                 return;
             }
 
-            if (interactable is not MonoBehaviour behaviour)
+            var behaviour = interactable as MonoBehaviour;
+            if (behaviour == null)
             {
                 return;
             }
