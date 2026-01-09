@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using BYOJoystick.Bindings;
 using BYOJoystick.Controls.Sync;
 using UnityEngine;
@@ -8,6 +9,12 @@ namespace BYOJoystick.Controls
 {
     public class CButton : IControl
     {
+        private static readonly MethodInfo StartInteractionMethod = typeof(VRButton).GetMethod(
+            "Vrint_OnStartInteraction",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo StopInteractionMethod = typeof(VRButton).GetMethod(
+            "Vrint_OnStopInteraction",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         protected readonly VRInteractable               Interactable;
         protected readonly InteractableSyncWrapper      SyncWrapper;
         protected readonly bool                         IsMP;
@@ -47,7 +54,7 @@ namespace BYOJoystick.Controls
                 c.Pressed = true;
                 c.SetInteracting(c.Interactable, true);
                 c.SetInteractedOnFrame(c.Interactable, Time.frameCount);
-                c.Button.Vrint_OnStartInteraction(null);
+                InvokeButtonMethod(StartInteractionMethod, c.Button);
                 c.Interactable.OnInteract?.Invoke();
 
                 if (c.Interactable.OnInteracting == null)
@@ -64,8 +71,18 @@ namespace BYOJoystick.Controls
 
                 c.Pressed = false;
                 c.Interactable.StopInteraction();
-                c.Button.Vrint_OnStopInteraction(null);
+                InvokeButtonMethod(StopInteractionMethod, c.Button);
             }
+        }
+
+        private static void InvokeButtonMethod(MethodInfo method, VRButton button)
+        {
+            if (method == null || button == null)
+            {
+                return;
+            }
+
+            method.Invoke(button, new object[] { null });
         }
     }
 }
