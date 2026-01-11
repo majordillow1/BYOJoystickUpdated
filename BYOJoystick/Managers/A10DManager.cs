@@ -43,6 +43,7 @@ namespace BYOJoystick.Managers
             FlightButton("Brakes/Airbrakes", "Throttle", ByManifest<VRThrottle, CThrottle>, CThrottle.Trigger);
 
             // Flaps
+            FlightButton("Flaps Cycle", "Flaps", ByName<VRLever, CLever>, CLever.Cycle, s: -1, n: true);
             FlightButton("Flaps 0", "Flaps", ByManifest<VRLever, CLever>, CLever.Set, 0, i: 9);
             FlightButton("Flaps 1", "Flaps", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 9);
             FlightButton("Flaps 2", "Flaps", ByManifest<VRLever, CLever>, CLever.Set, 2, i: 9);
@@ -56,6 +57,10 @@ namespace BYOJoystick.Managers
             FlightButton("Brake Lock Toggle", "Brake Locks", ByManifest<VRLever, CLever>, CLever.Cycle, i: 4);
             FlightButton("Brake Lock On", "Brake Locks", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 4);
             FlightButton("Brake Lock Off", "Brake Locks", ByManifest<VRLever, CLever>, CLever.Set, 0, i: 4);
+
+            // Weapons
+            FlightButton("Fire Weapon", "Joystick", Joysticks, CJoystick.Trigger);
+            FlightButton("Cycle Weapons", "Joystick", Joysticks, CJoystick.MenuButton);
 
             AddPostUpdateControl("Joystick");
             AddPostUpdateControl("Throttle");
@@ -82,6 +87,9 @@ namespace BYOJoystick.Managers
             NavButton("A/P Hdg Hold", "Heading Hold", ByManifest<VRButton, CButton>, CButton.Use, i: 18);
             NavButton("A/P Alt Hold", "Altitude Hold", ByManifest<VRButton, CButton>, CButton.Use, i: 6);
             NavButton("A/P Off", "All AP Off", ByManifest<VRButton, CButton>, CButton.Use, i: 81);
+
+            // Clear waypoint button (manifest)
+            NavButton("Clear Waypoint", "Clear Waypoint", ByManifest<VRButton, CButton>, CButton.Use, i: 10);
 
             // Altitude mode (baro/radar) lever
             NavButton("Altitude Mode Toggle", "Altiude Mode", ByManifest<VRLever, CLever>, CLever.Cycle, i: 0);
@@ -245,6 +253,9 @@ namespace BYOJoystick.Managers
             DisplayButton("MFD Right B4", "MFD Right", MFD, CMFD.Press, (int)MFDButtons.B4, i: 1);
             DisplayButton("MFD Right B5", "MFD Right", MFD, CMFD.Press, (int)MFDButtons.B5, i: 1);
 
+            // Swap MFDs (manifest)
+            DisplayButton("Swap MFDs", "Swap MFDs", ByManifest<VRButton, CButton>, CButton.Use, i: 67);
+
             AddPostUpdateControl("MFD Brightness");
             AddPostUpdateControl("SOI");
         }
@@ -252,7 +263,14 @@ namespace BYOJoystick.Managers
         protected override void CreateRadioControls()
         {
             RadioButton("Radio Transmit", "Radio", ByType<CockpitTeamRadioManager, CRadio>, CRadio.Transmit, s: -1, n: true);
-            RadioAxis("Radio Volume", "Radio Volume", ByManifest<VRTwistKnob, CKnob>, CKnob.Set, i: 0, n: true);
+
+            RadioAxis("Radio Volume", "Radio Volume", ByName<VRTwistKnob, CKnob>, CKnob.Set, s: -1, n: true);
+            RadioButton("Prev Song", "Prev Song", ByName<VRButton, CButton>, CButton.Use, s: -1, n: true);
+            RadioButton("Next Song", "Next Song", ByName<VRButton, CButton>, CButton.Use, s: -1, n: true);
+            RadioButton("Play/Pause", "Play/Pause", ByName<VRButton, CButton>, CButton.Use, s: -1, n: true);
+
+            RadioButton("Radio Mode Cycle", "Radio Mode", ByName<VRTwistKnobInt, CKnobInt>, CKnobInt.Cycle, s: -1, n: true);
+            RadioButton("Radio Channel Cycle", "Radio Channel", ByName<VRTwistKnobInt, CKnobInt>, CKnobInt.Cycle, s: -1, n: true);
         }
 
         protected override void CreateMusicControls()
