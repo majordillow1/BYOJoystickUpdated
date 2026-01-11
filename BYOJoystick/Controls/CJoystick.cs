@@ -83,13 +83,11 @@ namespace BYOJoystick.Controls
             {
                 if (!IsMP || !IsMulticrew)
                 {
-                    if (JoystickVector != PreviousJoystickVector)
-                    {
-                        PreviousJoystickVector = JoystickVector;
-                        joystick.RemoteSetStick(JoystickVector);
-                        joystick.OnSetStick?.Invoke(JoystickVector);
-                        joystick.OnSetSteer?.Invoke(JoystickVector.y);
-                    }
+                    // Always send stick state each frame in single-player so held inputs persist
+                    PreviousJoystickVector = JoystickVector;
+                    joystick.RemoteSetStick(JoystickVector);
+                    joystick.OnSetStick?.Invoke(JoystickVector);
+                    joystick.OnSetSteer?.Invoke(JoystickVector.y);
                 }
                 else
                 {
@@ -162,13 +160,13 @@ namespace BYOJoystick.Controls
         public static void SetYaw(CJoystick c, Binding binding, int state)
         {
             c.JoystickVector.y = ((JoystickBinding)binding).GetAsFloatCenteredNoDeadzone();
-            c.RollDeadzone     = ((JoystickBinding)binding).Deadzone;
+            c.YawDeadzone      = ((JoystickBinding)binding).Deadzone;
         }
 
         public static void SetRoll(CJoystick c, Binding binding, int state)
         {
             c.JoystickVector.z = -((JoystickBinding)binding).GetAsFloatCenteredNoDeadzone();
-            c.YawDeadzone      = ((JoystickBinding)binding).Deadzone;
+            c.RollDeadzone     = ((JoystickBinding)binding).Deadzone;
         }
 
         public static void MenuButton(CJoystick c, Binding binding, int state)

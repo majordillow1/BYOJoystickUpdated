@@ -1,4 +1,5 @@
-﻿using BYOJoystick.Bindings;
+﻿using System.Reflection;
+using BYOJoystick.Bindings;
 
 namespace BYOJoystick.Controls
 {
@@ -6,6 +7,9 @@ namespace BYOJoystick.Controls
     {
         protected readonly MFDPortalPresetButton PortalPresetButton;
         protected readonly MFDPortalManager      MFDPortalManager;
+
+        private static readonly MethodInfo SavePresetMethod = typeof(MFDPortalPresetButton).GetMethod("SavePreset", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo LoadPresetMethod = typeof(MFDPortalPresetButton).GetMethod("LoadPreset", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
         public CPresetButton(MFDPortalPresetButton portalPresetButton, MFDPortalManager mfdPortalManager)
         {
@@ -20,7 +24,12 @@ namespace BYOJoystick.Controls
         public static void Save(CPresetButton c, Binding binding, int state)
         {
             if (binding.GetAsBool())
-                c.PortalPresetButton.SavePreset();
+            {
+                if (SavePresetMethod != null)
+                    SavePresetMethod.Invoke(c.PortalPresetButton, null);
+                else
+                    c.PortalPresetButton.GetType().GetMethod("SavePreset")?.Invoke(c.PortalPresetButton, null);
+            }
         }
 
         public static void Load(CPresetButton c, Binding binding, int state)
@@ -28,7 +37,10 @@ namespace BYOJoystick.Controls
             if (binding.GetAsBool())
             {
                 c.MFDPortalManager.PlayInputSound();
-                c.PortalPresetButton.LoadPreset();
+                if (LoadPresetMethod != null)
+                    LoadPresetMethod.Invoke(c.PortalPresetButton, null);
+                else
+                    c.PortalPresetButton.GetType().GetMethod("LoadPreset")?.Invoke(c.PortalPresetButton, null);
             }
         }
     }

@@ -21,6 +21,70 @@ namespace BYOJoystick.Managers.Base
             if (VehicleControlManifest == null)
                 throw new InvalidOperationException("VehicleControlManifest not found.");
 
+            // Diagnostic: if mapping F-16 or A-10D, dump manifest and interactables for troubleshooting
+            try
+            {
+                if (GameName == "F-16" || GameName == "A-10D")
+                {
+                    Plugin.Log($"--- {GameName} DIAGNOSTIC DUMP START ---");
+                    var vcm = VehicleControlManifest;
+                    if (vcm != null)
+                    {
+                        Plugin.Log($"VCM: buttons={vcm.buttons?.Length ?? 0}, levers={vcm.levers?.Length ?? 0}, twistKnobs={vcm.twistKnobs?.Length ?? 0}, twistKnobInts={vcm.twistKnobInts?.Length ?? 0}, doors={vcm.doors?.Length ?? 0}, powerLevers={vcm.powerLevers?.Length ?? 0}, collectives={vcm.collectives?.Length ?? 0}, joysticks={vcm.joysticks?.Length ?? 0}, throttlePresent={(vcm.throttle != null)}");
+
+                        if (vcm.buttons != null)
+                        {
+                            for (int i = 0; i < vcm.buttons.Length; i++)
+                                Plugin.Log($"vcm.button[{i}] = {(vcm.buttons[i] != null ? GetInteractable(vcm.buttons[i]).GetControlReferenceName() : "<null>")}");
+                        }
+
+                        if (vcm.levers != null)
+                        {
+                            for (int i = 0; i < vcm.levers.Length; i++)
+                                Plugin.Log($"vcm.lever[{i}] = {(vcm.levers[i] != null ? GetInteractable(vcm.levers[i]).GetControlReferenceName() : "<null>")}");
+                        }
+
+                        if (vcm.powerLevers != null)
+                        {
+                            for (int i = 0; i < vcm.powerLevers.Length; i++)
+                                Plugin.Log($"vcm.powerLever[{i}] = {(vcm.powerLevers[i] != null ? GetInteractable(vcm.powerLevers[i]).GetControlReferenceName() : "<null>")}");
+                        }
+
+                        if (vcm.collectives != null)
+                        {
+                            for (int i = 0; i < vcm.collectives.Length; i++)
+                                Plugin.Log($"vcm.collective[{i}] = {(vcm.collectives[i] != null ? GetInteractable(vcm.collectives[i]).GetControlReferenceName() : "<null>")}");
+                        }
+
+                        if (vcm.throttle != null)
+                        {
+                            try { Plugin.Log($"vcm.throttle = {GetInteractable(vcm.throttle).GetControlReferenceName()}"); } catch { Plugin.Log("vcm.throttle = <error getting name>"); }
+                        }
+
+                        if (vcm.joysticks != null)
+                        {
+                            for (int i = 0; i < vcm.joysticks.Length; i++)
+                                Plugin.Log($"vcm.joystick[{i}] = {(vcm.joysticks[i] != null ? GetInteractable(vcm.joysticks[i]).GetControlReferenceName() : "<null>")}");
+                        }
+                    }
+
+                    var interactables = Vehicle.GetComponentsInChildren<VRInteractable>(true);
+                    Plugin.Log($"Found {interactables.Length} VRInteractables. Listing names and paths:");
+                    foreach (var it in interactables)
+                    {
+                        string name = "<null>";
+                        try { name = it.GetControlReferenceName(); } catch { }
+                        Plugin.Log($"Interactable: '{name}' at path: {GetGameObjectPath(it.gameObject)}");
+                    }
+
+                    Plugin.Log($"--- {GameName} DIAGNOSTIC DUMP END ---");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log($"Diagnostic dump failed: {ex.Message}");
+            }
+
             CJoystick.Instances.Clear();
 
             Interactables = Vehicle.GetComponentsInChildren<VRInteractable>(true);
@@ -35,7 +99,14 @@ namespace BYOJoystick.Managers.Base
             Plugin.Log($"Mapping {ControlActions.Count} control actions...");
             foreach (var controlAction in ControlActions.Values)
             {
-                controlAction.Map();
+                try
+                {
+                    controlAction.Map();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log($"WARNING: Mapping action '{controlAction.Name}' failed: {ex.Message}");
+                }
             }
 
             Plugin.Log($"Adding {_postUpdateControlNames.Count} post update controls...");
@@ -48,6 +119,20 @@ namespace BYOJoystick.Managers.Base
             }
 
             Plugin.Log($"Controls mapped for {GameName}.");
+        }
+
+        private static string GetGameObjectPath(GameObject go)
+        {
+            if (go == null)
+                return "<null>";
+            string path = go.name;
+            var t = go.transform;
+            while (t.parent != null)
+            {
+                t = t.parent;
+                path = t.name + "/" + path;
+            }
+            return path;
         }
 
         protected U ByName<T, U>(string name, string root, bool nullable, bool checkName, int idx) where T : MonoBehaviour where U : class, IControl

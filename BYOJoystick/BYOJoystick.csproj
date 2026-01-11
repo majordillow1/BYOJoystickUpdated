@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -36,6 +36,9 @@
         </Reference>
         <Reference Include="Assembly-CSharp-firstpass">
           <HintPath>..\..\SteamLibrary\steamapps\common\VTOL VR\VTOLVR_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+        </Reference>
+        <Reference Include="CustomAircraftLoader">
+          <HintPath>..\..\SteamLibrary\steamapps\workshop\content\3018410\3346173029\CustomAircraftLoader.dll</HintPath>
         </Reference>
         <Reference Include="ModLoader.Framework">
           <HintPath>..\..\SteamLibrary\steamapps\common\VTOL VR\@Mod Loader\Managed\ModLoader.Framework.dll</HintPath>
@@ -92,6 +95,6 @@
         </PackageReference>
     </ItemGroup>
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-        <Exec Command="copy &quot;$(TargetPath)&quot; &quot;D:\Projects\VTOLVR\My Mods\BYO Joystick\Builds\BYOJoystick.dll&quot;" />
+        <Exec Command="cmd /c if not exist &quot;D:\Projects\VTOLVR\My Mods\BYO Joystick\Builds&quot; mkdir &quot;D:\Projects\VTOLVR\My Mods\BYO Joystick\Builds&quot; &amp;&amp; copy &quot;$(TargetPath)&quot; &quot;D:\Projects\VTOLVR\My Mods\BYO Joystick\Builds\BYOJoystick.dll&quot;" />
     </Target>
 </Project>

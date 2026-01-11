@@ -62,10 +62,29 @@ namespace BYOJoystick.Controls
                     return;
 
                 if (c.IsMP && c.SyncWrapper != null && c.SyncWrapper.IsInteracting)
-                    c.SyncWrapper.StopInteracting(false);
+                {
+                    try
+                    {
+                        c.SyncWrapper.StopInteracting(false);
+                    }
+                    catch
+                    {
+                        // Ignore any errors from network sync stopping
+                    }
+                }
 
+                // Clear pressed first to avoid reentrancy issues
                 c.Pressed = false;
-                c.Interactable.StopInteraction();
+                try
+                {
+                    // Some VRInteractable implementations (e.g., VRLever) may throw when StopInteraction
+                    // is invoked without a proper controller. Catch exceptions to avoid crashing the plugin.
+                    c.Interactable.StopInteraction();
+                }
+                catch
+                {
+                    // Swallow exceptions from StopInteraction to prevent log spam and maintain stability
+                }
             }
         }
 

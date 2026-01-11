@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Reflection;
 using UnityEngine;
 
 namespace BYOJoystick.Controls.Sync
@@ -11,6 +12,11 @@ namespace BYOJoystick.Controls.Sync
         private readonly VRInteractableSync _iSync;
         private          float              _interactTimer;
         private          float              _interactTime;
+
+        private static readonly MethodInfo SendInteractRpcMethod = typeof(VRInteractableSync).GetMethod("SendInteractRPC", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                                   ?? typeof(VRInteractableSync).GetMethod("SendInteractRpc", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo SetExclusiveUserMethod = typeof(VRInteractableSync).GetMethod("SetExclusiveUser", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo GetCurrentExclusiveUserMethod = typeof(VRInteractableSync).GetMethod("GetCurrentExclusiveUser", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
         private InteractableSyncWrapper(VRInteractableSync iSync, VRInteractable interactable)
         {
@@ -26,9 +32,59 @@ namespace BYOJoystick.Controls.Sync
             return iSync == null ? null : new InteractableSyncWrapper(iSync, interactable);
         }
 
+        private ulong GetCurrentExclusiveUser()
+        {
+            if (GetCurrentExclusiveUserMethod != null)
+                return (ulong)(GetCurrentExclusiveUserMethod.Invoke(_iSync, null) ?? 0UL);
+
+            // Try reflectively by name at runtime
+            var m = _iSync.GetType().GetMethod("GetCurrentExclusiveUser", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (m != null)
+                return (ulong)(m.Invoke(_iSync, null) ?? 0UL);
+
+            return 0UL;
+        }
+
+        private void CallSendInteractRpc(bool isRightCon, bool state)
+        {
+            if (SendInteractRpcMethod != null)
+            {
+                SendInteractRpcMethod.Invoke(_iSync, new object[] { isRightCon, state });
+                return;
+            }
+
+            var mi = _iSync.GetType().GetMethod("SendInteractRPC", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                     ?? _iSync.GetType().GetMethod("SendInteractRpc", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (mi != null)
+            {
+                mi.Invoke(_iSync, new object[] { isRightCon, state });
+                return;
+            }
+
+            // Best-effort no-op if method not present
+        }
+
+        private void CallSetExclusiveUser(ulong id)
+        {
+            if (SetExclusiveUserMethod != null)
+            {
+                SetExclusiveUserMethod.Invoke(_iSync, new object[] { id });
+                return;
+            }
+
+            var mi = _iSync.GetType().GetMethod("SetExclusiveUser", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (mi != null)
+            {
+                mi.Invoke(_iSync, new object[] { id });
+                return;
+            }
+
+            // no-op fallback
+        }
+
         public bool TryInteractTimed(bool isRightCon, float time)
         {
-            ulong exclusiveUser = _iSync.GetCurrentExclusiveUser();
+            ulong exclusiveUser = GetCurrentExclusiveUser();
             if (IsInteracting)
             {
                 if (_iSync.exclusive && exclusiveUser != 0L && exclusiveUser != BDSteamClient.mySteamID)
@@ -52,14 +108,14 @@ namespace BYOJoystick.Controls.Sync
 
         public bool TryInteracting(bool isRightCon)
         {
-            ulong exclusiveUser = _iSync.GetCurrentExclusiveUser();
+            ulong exclusiveUser = GetCurrentExclusiveUser();
             if (_iSync.exclusive && exclusiveUser != 0L && exclusiveUser != BDSteamClient.mySteamID)
             {
                 IsInteracting = false;
                 return false;
             }
 
-            _iSync.SendInteractRPC(isRightCon, true);
+            CallSendInteractRpc(isRightCon, true);
 
             if (!_iSync.exclusive || !_iSync.isMine)
             {
@@ -70,7 +126,7 @@ namespace BYOJoystick.Controls.Sync
             if (exclusiveUser == 0L)
             {
                 _iSync.SendRPC("SetExclusiveUser", exclusiveUser = BDSteamClient.mySteamID);
-                _iSync.SetExclusiveUser(BDSteamClient.mySteamID);
+                CallSetExclusiveUser(BDSteamClient.mySteamID);
                 IsInteracting = true;
                 return true;
             }
@@ -88,13 +144,13 @@ namespace BYOJoystick.Controls.Sync
         public void StopInteracting(bool isRightCon)
         {
             IsInteracting = false;
-            ulong exclusiveUser = _iSync.GetCurrentExclusiveUser();
-            _iSync.SendInteractRPC(isRightCon, false);
+            ulong exclusiveUser = GetCurrentExclusiveUser();
+            CallSendInteractRpc(isRightCon, false);
             if (!_iSync.exclusive || exclusiveUser != BDSteamClient.mySteamID)
                 return;
 
             _iSync.SendRPC("SetExclusiveUser", 0);
-            _iSync.SetExclusiveUser(0);
+            CallSetExclusiveUser(0);
         }
 
         private void SetTimer(float time)

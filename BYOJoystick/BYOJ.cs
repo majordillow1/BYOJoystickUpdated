@@ -59,6 +59,8 @@ namespace BYOJoystick
             AddManager(new AV42CManager());
             AddManager(new FA26BManager());
             AddManager(new F45AManager());
+            AddManager(new F16Manager());
+            AddManager(new A10DManager());
             AddManager(new AH94FrontManager());
             AddManager(new AH94RearManager());
             AddManager(new T55FrontManager());
@@ -276,10 +278,12 @@ namespace BYOJoystick
                 "AV-42C"  => "AV42C",
                 "F/A-26B" => "FA26B",
                 "F-45A"   => "F45A",
+                "F-16"    => "F16",
                 "AH-94"   => isSeatA ? "AH94Rear" : "AH94Front",
                 "T-55"    => isSeatA ? "T55Front" : "T55Rear",
                 "EF-24G"  => isSeatA ? "EF24GFront" : "EF24GRear",
-                _         => throw new InvalidOperationException($"Vehicle {vehicleName} not supported")
+                "A-10D"   => "A10D",
+                 _         => throw new InvalidOperationException($"Vehicle {vehicleName} not supported")
             };
         }
 

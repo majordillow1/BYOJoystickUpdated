@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using BYOJoystick.Bindings;
 using BYOJoystick.Controls.Converters;
 using BYOJoystick.Controls.Sync;
@@ -10,6 +11,10 @@ namespace BYOJoystick.Controls
 {
     public class CThrottle : IControl
     {
+        private static readonly MethodInfo UpdateThrottleMethod = typeof(VRThrottle).GetMethod("UpdateThrottle", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo UpdateThrottleAnimMethod = typeof(VRThrottle).GetMethod("UpdateThrottleAnim", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                                         ?? typeof(VRThrottle).GetMethod("UpdateThrottleAnimation", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
         protected readonly bool IsMP;
         protected readonly bool IsMulticrew;
 
@@ -130,8 +135,8 @@ namespace BYOJoystick.Controls
                     float gateAnimThrottle = Mathf.Lerp(GetGateAnimThrottle(Throttle), Mathf.Lerp(Throttle.abGateThreshold, throttle, 0.25f), 25f * Time.deltaTime);
                     SetGateAnimThrottle(Throttle, gateAnimThrottle);
                     throttle = Throttle.abGateThreshold;
-                    Throttle.UpdateThrottle(throttle);
-                    Throttle.UpdateThrottleAnim(gateAnimThrottle);
+                    InvokeUpdateThrottle(throttle);
+                    InvokeUpdateThrottleAnim(gateAnimThrottle);
                     SetThrottle(Throttle, throttle);
                     throttleUpdated = true;
                 }
@@ -140,8 +145,8 @@ namespace BYOJoystick.Controls
                     throttle = 1f;
                     float gateAnimThrottle = Mathf.Lerp(GetGateAnimThrottle(Throttle), 1f, 25f * Time.deltaTime);
                     SetGateAnimThrottle(Throttle, gateAnimThrottle);
-                    Throttle.UpdateThrottleAnim(gateAnimThrottle);
-                    Throttle.UpdateThrottle(throttle);
+                    InvokeUpdateThrottleAnim(gateAnimThrottle);
+                    InvokeUpdateThrottle(throttle);
                     SetThrottle(Throttle, throttle);
                     throttleUpdated = true;
                 }
@@ -175,9 +180,46 @@ namespace BYOJoystick.Controls
                 Throttle.audioSource.PlayOneShot(Throttle.throttleClickSound);
             }
 
-            Throttle.UpdateThrottleAnim(throttle);
-            Throttle.UpdateThrottle(throttle);
+            InvokeUpdateThrottleAnim(throttle);
+            InvokeUpdateThrottle(throttle);
             SetThrottle(Throttle, throttle);
+        }
+
+        private void InvokeUpdateThrottle(float value)
+        {
+            if (UpdateThrottleMethod != null)
+            {
+                UpdateThrottleMethod.Invoke(Throttle, new object[] { value });
+                return;
+            }
+
+            var mi = Throttle.GetType().GetMethod("UpdateThrottle", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (mi != null)
+            {
+                mi.Invoke(Throttle, new object[] { value });
+                return;
+            }
+
+            // no-op fallback
+        }
+
+        private void InvokeUpdateThrottleAnim(float value)
+        {
+            if (UpdateThrottleAnimMethod != null)
+            {
+                UpdateThrottleAnimMethod.Invoke(Throttle, new object[] { value });
+                return;
+            }
+
+            var mi = Throttle.GetType().GetMethod("UpdateThrottleAnim", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                     ?? Throttle.GetType().GetMethod("UpdateThrottleAnimation", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (mi != null)
+            {
+                mi.Invoke(Throttle, new object[] { value });
+                return;
+            }
+
+            // no-op fallback
         }
 
         public static void Set(CThrottle c, Binding binding, int state)

@@ -57,6 +57,22 @@ namespace BYOJoystick
                 BYOJ = Instantiate(prefab, transform.position, transform.rotation).GetComponent<BYOJ>();
                 DontDestroyOnLoad(BYOJ);
                 Log("BYOJ Started!");
+
+                if (BYOJ == null)
+                {
+                    Log("ERROR: Instantiated prefab did not contain a BYOJ component.");
+                }
+                else
+                {
+                    if (BYOJ.BYOJUI == null)
+                    {
+                        Log("WARNING: BYOJ prefab's BYOJUI reference is null. UI will not appear.");
+                    }
+                    else
+                    {
+                        Log($"BYOJUI present. BYOJUI.gameObject.activeSelf={BYOJ.BYOJUI.gameObject.activeSelf}");
+                    }
+                }
             }
             else
                 Log("Failed to load prefab from Asset Bundle");

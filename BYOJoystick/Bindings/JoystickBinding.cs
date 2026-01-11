@@ -71,6 +71,10 @@ namespace BYOJoystick.Bindings
 
         public void OnModifierChange(int value, bool inputHasModifierBinding)
         {
+            // Guard against case where Action has not been set yet
+            if (Action == null)
+                return;
+
             _modifierActive = value >= ButtonMax;
             if (Action.Input == ActionInput.AxisCentered
              && _axisActive
@@ -80,6 +84,10 @@ namespace BYOJoystick.Bindings
 
         public void OnStateChange(int value, bool inputHasModifierBinding)
         {
+            // Guard against case where Action has not been set yet
+            if (Action == null)
+                return;
+
             _value = value;
 
             if (Action.Input == ActionInput.Button)

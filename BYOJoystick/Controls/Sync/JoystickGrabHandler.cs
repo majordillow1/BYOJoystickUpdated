@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.Reflection;
 using UnityEngine;
 using VTOLVR.Multiplayer;
+using BYOJoystick;
 
 namespace BYOJoystick.Controls.Sync
 {
@@ -12,14 +14,19 @@ namespace BYOJoystick.Controls.Sync
 
         private readonly VRInteractable                  _interactable;
         private readonly VRJoystick                      _joystick;
-        private readonly ConnectedJoysticks              _jSync;
-        private readonly MultiUserVehicleSync            _muvs;
+        private readonly object                          _jSync;
+        private readonly object                          _muvs;
         private readonly Action<ConnectedJoysticks, int> _onLocalGrabbedStick;
         private readonly Action<ConnectedJoysticks, int> _onLocalReleasedStick;
+        private readonly Action<object, int>             _callOnGrabbedStick;
+        private readonly Action<object, int>             _callOnReleasedStick;
+        private readonly Action<object, VRInteractable> _callOnControlInteract;
+        private readonly Action<object>                  _callOnControlInteracting;
+        private readonly Action<object, VRInteractable> _callOnControlStopInteract;
         private          float                           _grabTimer;
         private          float                           _grabTime;
 
-        private JoystickGrabHandler(VRJoystick joystick, ConnectedJoysticks jSync, int controlIndex, MultiUserVehicleSync muvs, VRInteractable interactable)
+        private JoystickGrabHandler(VRJoystick joystick, object jSync, int controlIndex, object muvs, VRInteractable interactable)
         {
             _interactable         = interactable;
             _joystick             = joystick;
@@ -28,6 +35,11 @@ namespace BYOJoystick.Controls.Sync
             ControlIndex          = controlIndex;
             _onLocalGrabbedStick  = CompiledExpressions.CreateEventInvoker<ConnectedJoysticks>("OnLocalGrabbedStick");
             _onLocalReleasedStick = CompiledExpressions.CreateEventInvoker<ConnectedJoysticks>("OnLocalReleasedStick");
+            _callOnGrabbedStick   = CreateMethodCaller(jSync, "OnGrabbedStick");
+            _callOnReleasedStick  = CreateMethodCaller(jSync, "OnReleasedStick");
+            _callOnControlInteract   = CreateMethodCallerForMuvs(muvs, "OnControlInteract");
+            _callOnControlInteracting = CreateMethodCallerNoArg(muvs, "OnControlInteracting");
+            _callOnControlStopInteract = CreateMethodCallerForMuvs(muvs, "OnControlStopInteract");
         }
 
         public static JoystickGrabHandler Create(VRJoystick joystick, ConnectedJoysticks jSync, MultiUserVehicleSync muvs, VRInteractable interactable)
@@ -49,9 +61,9 @@ namespace BYOJoystick.Controls.Sync
                 return;
 
             IsGrabbed = true;
-            _jSync.OnGrabbedStick(ControlIndex);
-            _muvs.OnControlInteract(_interactable);
-            _onLocalGrabbedStick.Invoke(_jSync, ControlIndex);
+            _callOnGrabbedStick?.Invoke(_jSync, ControlIndex);
+            _callOnControlInteract?.Invoke(_muvs, _interactable);
+            _onLocalGrabbedStick?.Invoke((ConnectedJoysticks)_jSync, ControlIndex);
             _interactable.StartCoroutine(GrabbedEnumerator());
         }
 
@@ -66,7 +78,7 @@ namespace BYOJoystick.Controls.Sync
                     yield break;
                 }
 
-                _muvs.OnControlInteracting();
+                _callOnControlInteracting?.Invoke(_muvs);
                 yield return null;
             }
         }
@@ -74,9 +86,42 @@ namespace BYOJoystick.Controls.Sync
         public void ReleaseStick()
         {
             IsGrabbed = false;
-            _jSync.OnReleasedStick(ControlIndex);
-            _muvs.OnControlStopInteract(_interactable);
-            _onLocalReleasedStick.Invoke(_jSync, ControlIndex);
+            _callOnReleasedStick?.Invoke(_jSync, ControlIndex);
+            _callOnControlStopInteract?.Invoke(_muvs, _interactable);
+            _onLocalReleasedStick?.Invoke((ConnectedJoysticks)_jSync, ControlIndex);
+        }
+
+        private static Action<object, int> CreateMethodCaller(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return (obj, i) => method.Invoke(obj, new object[] { i });
+        }
+
+        private static Action<object, VRInteractable> CreateMethodCallerForMuvs(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return (obj, interactable) => method.Invoke(obj, new object[] { interactable });
+        }
+
+        private static Action<object> CreateMethodCallerNoArg(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return obj => method.Invoke(obj, null);
         }
     }
 }

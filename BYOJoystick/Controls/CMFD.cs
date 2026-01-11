@@ -14,14 +14,44 @@ namespace BYOJoystick.Controls
         {
             MFD = mfd;
             var buttonCompsField = typeof(MFD).GetField("buttonComps", BindingFlags.NonPublic | BindingFlags.Instance);
-            var buttonComps      = (Dictionary<MFD.MFDButtons, MFD.MFDButtonComp>)buttonCompsField.GetValue(mfd);
-            foreach (var kvp in buttonComps)
-            {
-                var button = kvp.Value.interactable.GetComponent<VRButton>();
-                if (button == null)
-                    throw new InvalidOperationException($"Interactable {kvp.Value.interactable.GetControlReferenceName()} does not have a VRButton component.");
+            if (buttonCompsField == null)
+                throw new InvalidOperationException("MFD.buttonComps field not found");
 
-                Buttons[(int)kvp.Key] = new CButton(kvp.Value.interactable, button);
+            var buttonCompsObj = buttonCompsField.GetValue(mfd);
+            if (buttonCompsObj == null)
+                throw new InvalidOperationException("MFD.buttonComps is null");
+
+            var enumerable = buttonCompsObj as System.Collections.IEnumerable;
+            if (enumerable == null)
+                throw new InvalidOperationException("MFD.buttonComps is not enumerable");
+
+            foreach (var kv in enumerable)
+            {
+                var kvType = kv.GetType();
+                var keyProp = kvType.GetProperty("Key");
+                var valProp = kvType.GetProperty("Value");
+                if (keyProp == null || valProp == null)
+                    continue;
+
+                var key = keyProp.GetValue(kv);
+                var val = valProp.GetValue(kv);
+                if (val == null || key == null)
+                    continue;
+
+                var valType = val.GetType();
+                var interactableField = valType.GetField("interactable", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                if (interactableField == null)
+                    throw new InvalidOperationException("MFD button component 'interactable' field not found");
+
+                var interactable = interactableField.GetValue(val) as VRInteractable;
+                if (interactable == null)
+                    throw new InvalidOperationException("Interactable field is not a VRInteractable");
+
+                var button = interactable.GetComponent<VRButton>();
+                if (button == null)
+                    throw new InvalidOperationException($"Interactable {interactable.GetControlReferenceName()} does not have a VRButton component.");
+
+                Buttons[(int)(MFD.MFDButtons)key] = new CButton(interactable, button);
             }
         }
 

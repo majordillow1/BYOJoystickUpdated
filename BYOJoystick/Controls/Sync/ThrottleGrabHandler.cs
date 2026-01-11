@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.Reflection;
 using UnityEngine;
 using VTOLVR.Multiplayer;
+using BYOJoystick;
 
 namespace BYOJoystick.Controls.Sync
 {
@@ -11,18 +13,24 @@ namespace BYOJoystick.Controls.Sync
 
         private readonly VRInteractable                  _interactable;
         private readonly VRThrottle                      _throttle;
-        private readonly ConnectedThrottles              _tSync;
+        private readonly object                          _tSync;
         private readonly int                             _ctrlIdx;
-        private readonly MultiUserVehicleSync            _muvs;
+        private readonly object                          _muvs;
         private readonly Action<ConnectedThrottles, int> _onLocalGrabbedThrottle;
         private readonly Action<ConnectedThrottles, int> _onLocalReleasedThrottle;
+        private readonly Action<object, int>             _callOnGrabbedThrottle;
+        private readonly Action<object, int>             _callOnReleasedThrottle;
+        private readonly Action<object, VRInteractable> _callOnControlInteract;
+        private readonly Action<object>                  _callOnControlInteracting;
+        private readonly Action<object, VRInteractable> _callOnControlStopInteract;
+
         private          float                           _grabTimer;
         private          float                           _grabTime;
 
         private ThrottleGrabHandler(VRThrottle           throttle,
-                                    ConnectedThrottles   tSync,
+                                    object               tSync,
                                     int                  ctrlIdx,
-                                    MultiUserVehicleSync muvs,
+                                    object               muvs,
                                     VRInteractable       interactable)
         {
             _interactable            = interactable;
@@ -32,6 +40,11 @@ namespace BYOJoystick.Controls.Sync
             _muvs                    = muvs;
             _onLocalGrabbedThrottle  = CompiledExpressions.CreateEventInvoker<ConnectedThrottles>("OnLocalGrabbedThrottle");
             _onLocalReleasedThrottle = CompiledExpressions.CreateEventInvoker<ConnectedThrottles>("OnLocalReleasedThrottle");
+            _callOnGrabbedThrottle   = CreateMethodCaller(tSync, "OnGrabbedThrottle");
+            _callOnReleasedThrottle  = CreateMethodCaller(tSync, "OnReleasedThrottle");
+            _callOnControlInteract   = CreateMethodCallerForMuvs(muvs, "OnControlInteract");
+            _callOnControlInteracting = CreateMethodCallerNoArg(muvs, "OnControlInteracting");
+            _callOnControlStopInteract = CreateMethodCallerForMuvs(muvs, "OnControlStopInteract");
         }
 
         public static ThrottleGrabHandler Create(VRThrottle throttle, ConnectedThrottles tSync, MultiUserVehicleSync muvs, VRInteractable interactable)
@@ -59,9 +72,9 @@ namespace BYOJoystick.Controls.Sync
                 return;
 
             IsGrabbed = true;
-            _tSync.OnGrabbedThrottle(_ctrlIdx);
-            _muvs.OnControlInteract(_interactable);
-            _onLocalGrabbedThrottle.Invoke(_tSync, _ctrlIdx);
+            _callOnGrabbedThrottle?.Invoke(_tSync, _ctrlIdx);
+            _callOnControlInteract?.Invoke(_muvs, _interactable);
+            _onLocalGrabbedThrottle?.Invoke((ConnectedThrottles)_tSync, _ctrlIdx);
             _interactable.StartCoroutine(GrabbedEnumerator());
         }
 
@@ -76,7 +89,7 @@ namespace BYOJoystick.Controls.Sync
                     yield break;
                 }
 
-                _muvs.OnControlInteracting();
+                _callOnControlInteracting?.Invoke(_muvs);
                 yield return null;
             }
         }
@@ -84,9 +97,42 @@ namespace BYOJoystick.Controls.Sync
         private void ReleaseThrottle()
         {
             IsGrabbed = false;
-            _tSync.OnReleasedThrottle(_ctrlIdx);
-            _muvs.OnControlStopInteract(_interactable);
-            _onLocalReleasedThrottle.Invoke(_tSync, _ctrlIdx);
+            _callOnReleasedThrottle?.Invoke(_tSync, _ctrlIdx);
+            _callOnControlStopInteract?.Invoke(_muvs, _interactable);
+            _onLocalReleasedThrottle?.Invoke((ConnectedThrottles)_tSync, _ctrlIdx);
+        }
+
+        private static Action<object, int> CreateMethodCaller(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return (obj, i) => method.Invoke(obj, new object[] { i });
+        }
+
+        private static Action<object, VRInteractable> CreateMethodCallerForMuvs(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return (obj, interactable) => method.Invoke(obj, new object[] { interactable });
+        }
+
+        private static Action<object> CreateMethodCallerNoArg(object targetExample, string methodName)
+        {
+            if (targetExample == null)
+                return null;
+            var type = targetExample.GetType();
+            var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (method == null)
+                return null;
+            return obj => method.Invoke(obj, null);
         }
     }
 }
