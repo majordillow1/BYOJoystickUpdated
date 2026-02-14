@@ -61,7 +61,7 @@ namespace BYOJoystick.Managers
             // Weapons
             FlightButton("Fire Weapon", "Joystick", Joysticks, CJoystick.Trigger);
             FlightButton("Cycle Weapons", "Joystick", Joysticks, CJoystick.MenuButton);
-
+            
             AddPostUpdateControl("Joystick");
             AddPostUpdateControl("Throttle");
         }
@@ -76,8 +76,12 @@ namespace BYOJoystick.Managers
             AssistButton("Yaw Assist Toggle", "Toggle Yaw Assist", ByManifest<VRLever, CLever>, CLever.Cycle, i: 32);
             AssistButton("Roll Assist Toggle", "Toggle Roll Assist", ByManifest<VRLever, CLever>, CLever.Cycle, i: 28);
 
-            AssistButton("Toggle Pitch Trim", "Toggle Pitch Trim", ByManifest<VRLever, CLever>, CLever.Cycle, i: 14);
+            // Pitch trim mapping: search for the more specific token to avoid matching generic 'Toggle' controls
+            AssistButton("Toggle Pitch Trim", "Pitch Trim", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
+
             AssistButton("Toggle G-Limiter", "Toggle G-Limiter", ByManifest<VRLever, CLever>, CLever.Cycle, i: 14);
+            AssistButton("G-Limiter On", "Toggle G-Limiter", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 14);
+            AssistButton("G-Limiter Off", "Toggle G-Limiter", ByManifest<VRLever, CLever>, CLever.Set, 0, i: 14);
         }
 
         protected override void CreateNavigationControls()
@@ -96,7 +100,8 @@ namespace BYOJoystick.Managers
             NavButton("Altitude Mode Baro", "Altiude Mode", ByManifest<VRLever, CLever>, CLever.Set, 0, i: 0);
             NavButton("Altitude Mode Radar", "Altiude Mode", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 0);
 
-            NavAxisC("A/P Altitude", "Adjust AP Altitude", ByManifest<VRTwistKnob, CKnob>, CKnob.Set, i: 31);
+            // Use name-based lookup for AP altitude to avoid manifest index changes
+            NavAxisC("A/P Altitude", "Adjust AP Altitude", ByNamePartial<VRTwistKnob, CKnob>, CKnob.Set, n: true);
             AddPostUpdateControl("Adjust AP Altitude");
         }
 
@@ -131,10 +136,12 @@ namespace BYOJoystick.Managers
             // Cycle Jamming Mode (button)
             SystemsButton("Cycle Jamming Mode", "Cycle Jamming Mode", ByManifest<VRButton, CButton>, CButton.Use, i: 23);
 
+            // Countermeasures: provide deploy and discrete toggles with name-based fallbacks
+            SystemsButton("Fire Countermeasures", "Throttle", ByManifest<VRThrottle, CThrottle>, CThrottle.MenuButton);
+            SystemsButton("Flares Toggle", "Toggle Flares", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
+            SystemsButton("Chaff Toggle", "Toggle Chaff", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
+
             // Radar / TGP / RWR / Jammer
-            SystemsButton("Radar Power Toggle", "Radar Power", ByManifest<VRTwistKnobInt, CKnobInt>, CKnobInt.Cycle, i: 29);
-            SystemsButton("Radar Power On", "Radar Power", ByManifest<VRTwistKnobInt, CKnobInt>, CKnobInt.Set, 1, i: 29);
-            SystemsButton("Radar Power Off", "Radar Power", ByManifest<VRTwistKnobInt, CKnobInt>, CKnobInt.Set, 0, i: 29);
 
             SystemsButton("TGP Power Toggle", "TGP Power", ByManifest<VRLever, CLever>, CLever.Cycle, i: 31);
             SystemsButton("TGP Power On", "TGP Power", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 31);
@@ -157,12 +164,12 @@ namespace BYOJoystick.Managers
             HUDButton("Helmet Visor Toggle", "Toggle Visor", HelmetController, CHelmet.ToggleVisor, s: -1, n: true);
             HUDButton("Helmet NV Toggle", "Toggle NVG", HelmetController, CHelmet.ToggleNightVision, s: -1, n: true);
 
-            HUDButton("HUD Power Toggle", "HUD Power", ByManifest<VRLever, CLever>, CLever.Cycle, i: 17);
-            HUDButton("HUD Power On", "HUD Power", ByManifest<VRLever, CLever>, CLever.Set, 1, i: 17);
-            HUDButton("HUD Power Off", "HUD Power", ByManifest<VRLever, CLever>, CLever.Set, 0, i: 17);
+            HUDButton("HUD Power Toggle", "HUD Power", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
+            HUDButton("HUD Power On", "HUD Power", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use,  n: true);
+            HUDButton("HUD Power Off", "HUD Power", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
  
-            HUDButton("HUD Tint", "HUD Tint", ByManifest<VRTwistKnob, CKnob>, CKnob.Set, i: 16);
-            HUDButton("HUD Brightness", "HUD Brightness", ByManifest<VRTwistKnob, CKnob>, CKnob.Set, i: 31);
+            HUDButton("HUD Tint", "HUD Tint", ByNamePartial<VRTwistKnob, CKnob>, CKnob.Set, n: true);
+            HUDButton("HUD Brightness", "HUD Brightness", ByNamePartial<VRTwistKnob, CKnob>, CKnob.Set, n: true);
 
             // HUD color mode (day/night)
             HUDButton("HUD Color Mode Toggle", "HUD Color Mode", ByManifest<VRLever, CLever>, CLever.Cycle, i: 16);
@@ -202,7 +209,7 @@ namespace BYOJoystick.Managers
             DisplayButton("SOI Zoom In", "SOI", SOI, CSOI.ZoomIn);
             DisplayButton("SOI Zoom Out", "SOI", SOI, CSOI.ZoomOut);
 
-            DisplayAxis("MFD Brightness", "MFD Brightness", ByManifest<VRTwistKnob, CKnob>, CKnob.Set, i: 0);
+            DisplayAxis("MFD Brightness", "MFD Brightness", ByNamePartial<VRTwistKnob, CKnob>, CKnob.Set, n: true);
 
             // Left/right MFD power and full button sets
             DisplayButton("MFD Left Toggle", "MFD Left", MFD, CMFD.PowerToggle, i: 0);
@@ -307,7 +314,7 @@ namespace BYOJoystick.Managers
             MiscButton("Fuel Dump Toggle", "Fuel Dump Switch", ByManifest<VRLever, CLever>, CLever.Cycle, i: 11);
 
             // Jettison controls
-            MiscButton("Switch Cover (Jettison)", "Switch Cover (Jettison)", ByManifest<VRLever, CLever>, CLever.Cycle, i: 8);
+            MiscButton("Switch Cover (Jettison)", "Switch Cover (Jettison)", ByNamePartial<VRInteractable, CInteractable>, CInteractable.Use, n: true);
             MiscButton("Jettison Execute", "Jettison", ByManifest<VRButton, CButton>, CButton.Use, i: 26);
             MiscButton("Jettison All", "Jettison All", ByManifest<VRButton, CButton>, CButton.Use, i: 20);
             MiscButton("Jettison Empty", "Jettison Empty", ByManifest<VRButton, CButton>, CButton.Use, i: 21);

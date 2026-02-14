@@ -59,6 +59,10 @@ namespace BYOJoystick.Managers
             FlightButton("Fire Weapon", "Joystick", Joysticks, CJoystick.Trigger);
             FlightButton("Cycle Weapons", "Joystick", Joysticks, CJoystick.MenuButton);
 
+ 
+            
+
+
             // Misc
             FlightButton("Eject", "Eject", ByType<EjectHandle, CEject>, CEject.Pull, s: -1, n: true);
 
@@ -68,6 +72,9 @@ namespace BYOJoystick.Managers
 
         protected override void CreateAssistControls()
         {
+            AssistButton("G-Limiter Toggle", "G-Limiter", ByName<VRLever, CLever>, CLever.Cycle, s: -1, n: true);
+            AssistButton("G-Limiter On", "G-Limiter", ByName<VRLever, CLever>, CLever.Set, s: 1, n: true);
+            AssistButton("G-Limiter Off", "G-Limiter", ByName<VRLever, CLever>, CLever.Set, s: 0, n: true);
         }
 
         protected override void CreateNavigationControls()
@@ -117,7 +124,7 @@ namespace BYOJoystick.Managers
             SystemsButton("TGP Power Toggle", "TGP Power", ByName<VRLever, CLever>, CLever.Cycle, s: -1, n: true);
             SystemsButton("DED Power Toggle", "DED Power", ByName<VRLever, CLever>, CLever.Cycle, s: -1, n: true);
             SystemsButton("RWR Power Toggle", "RWR Power", ByName<VRLever, CLever>, CLever.Cycle, s: -1, n: true);
-
+            SystemsButton("Fire Countermeasures", "Throttle", ByManifest<VRThrottle, CThrottle>, CThrottle.MenuButton);
             // Jettison switch: use the knob-int control if present so interaction start/stop is handled correctly
             SystemsButton("Jettison Execute", "Jettison Switch", ByName<VRTwistKnobInt, CKnobInt>, CKnobInt.Push, s: -1, n: true);
             SystemsButton("Jettison Cycle", "Jettison Switch", ByName<VRTwistKnobInt, CKnobInt>, CKnobInt.Cycle, s: -1, n: true);

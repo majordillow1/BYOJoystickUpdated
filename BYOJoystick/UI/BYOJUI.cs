@@ -28,6 +28,11 @@ namespace BYOJoystick.UI
 
         private readonly List<VehicleSelector> _selectors = new List<VehicleSelector>();
         private          Manager               _selectedManager;
+        private          int                   _currentPage;
+        private          int                   _itemsPerPage = 0;
+        private          Button                _prevPageButton;
+        private          Button                _nextPageButton;
+        private          TextMeshProUGUI       _pageIndicator;
         public           bool                  IsBinding => BYOJBindingModal.IsBinding;
 
         public void Initialise()
@@ -45,12 +50,194 @@ namespace BYOJoystick.UI
                 Destroy(child.gameObject);
             }
 
-            foreach (var manager in BYOJ.GetAllManagers())
+            _selectors.Clear();
+
+            var managers = BYOJ.GetAllManagers();
+            foreach (var manager in managers)
             {
                 var selector = Instantiate(VehicleSelectorPrefab, VehicleSelection.transform);
                 _selectors.Add(selector);
                 selector.Initialise(manager.GameName, manager.ShortName, OnSelectVehicle, OnSaveVehicle, OnLoadVehicle, OnCopyFromVehicle);
             }
+
+            // Create paging controls if needed
+            CreatePagingControlsIfNeeded();
+            // Recalculate items per page and update visible page
+            CalculateItemsPerPage();
+            _currentPage = 0;
+            UpdatePage();
+        }
+
+        private void CreatePagingControlsIfNeeded()
+        {
+            // Parent for controls
+            var parent = VehicleSelection.transform.parent as RectTransform;
+            if (parent == null)
+                return;
+
+            // Get font from an existing text component in a prefab so our dynamic text renders properly
+            TMP_FontAsset font = null;
+            Material fontMaterial = null;
+            if (VehicleSelectorPrefab != null && VehicleSelectorPrefab.SelectText != null)
+            {
+                font = VehicleSelectorPrefab.SelectText.font;
+                fontMaterial = VehicleSelectorPrefab.SelectText.fontSharedMaterial;
+            }
+            
+            if (_prevPageButton == null)
+            {
+                var prevGo = new GameObject("PrevPageButton", typeof(RectTransform), typeof(Button), typeof(Image));
+                prevGo.transform.SetParent(parent, false);
+                var rt = prevGo.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0f, 1f);
+                rt.anchorMax = new Vector2(0f, 1f);
+                rt.pivot = new Vector2(0f, 1f);
+                // position slightly inset and size a bit larger for touchability
+                rt.anchoredPosition = new Vector2(12f, -12f);
+                rt.sizeDelta = new Vector2(40f, 34f);
+                var img = prevGo.GetComponent<Image>();
+                img.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
+                img.raycastTarget = true;
+                // add a thin outline for contrast
+                var outlinePrev = prevGo.AddComponent<Outline>();
+                outlinePrev.effectColor = new Color(0f, 0f, 0f, 0.9f);
+                outlinePrev.effectDistance = new Vector2(1f, -1f);
+                _prevPageButton = prevGo.GetComponent<Button>();
+                _prevPageButton.onClick.AddListener(() => { if (_currentPage > 0) { _currentPage--; UpdatePage(); } });
+
+                var txtGo = new GameObject("Text", typeof(RectTransform));
+                txtGo.transform.SetParent(prevGo.transform, false);
+                var txt = txtGo.AddComponent<TextMeshProUGUI>();
+                if (font != null) txt.font = font;
+                if (fontMaterial != null) txt.fontSharedMaterial = fontMaterial;
+                txt.text = "<";
+                txt.fontSize = 20;
+                txt.color = Color.white;
+                txt.alignment = TextAlignmentOptions.Center;
+                txt.raycastTarget = false;
+                txt.enableAutoSizing = false;
+                txt.fontStyle = FontStyles.Bold;
+                var tRt = txtGo.GetComponent<RectTransform>();
+                tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one; tRt.sizeDelta = Vector2.zero;
+            }
+
+            if (_nextPageButton == null)
+            {
+                var nextGo = new GameObject("NextPageButton", typeof(RectTransform), typeof(Button), typeof(Image));
+                nextGo.transform.SetParent(parent, false);
+                var rt = nextGo.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(1f, 1f);
+                rt.anchorMax = new Vector2(1f, 1f);
+                rt.pivot = new Vector2(1f, 1f);
+                // move left from the right edge so it does not touch the edge and not overlap prev
+                rt.anchoredPosition = new Vector2(-52f, -12f);
+                rt.sizeDelta = new Vector2(40f, 34f);
+                var img = nextGo.GetComponent<Image>();
+                img.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
+                img.raycastTarget = true;
+                var outlineNext = nextGo.AddComponent<Outline>();
+                outlineNext.effectColor = new Color(0f, 0f, 0f, 0.9f);
+                outlineNext.effectDistance = new Vector2(1f, -1f);
+                _nextPageButton = nextGo.GetComponent<Button>();
+                _nextPageButton.onClick.AddListener(() => { _currentPage++; UpdatePage(); });
+
+                var txtGo = new GameObject("Text", typeof(RectTransform));
+                txtGo.transform.SetParent(nextGo.transform, false);
+                var txt = txtGo.AddComponent<TextMeshProUGUI>();
+                if (font != null) txt.font = font;
+                if (fontMaterial != null) txt.fontSharedMaterial = fontMaterial;
+                txt.text = ">";
+                txt.fontSize = 20;
+                txt.color = Color.white;
+                txt.alignment = TextAlignmentOptions.Center;
+                txt.raycastTarget = false;
+                txt.enableAutoSizing = false;
+                txt.fontStyle = FontStyles.Bold;
+                var tRt = txtGo.GetComponent<RectTransform>();
+                tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one; tRt.sizeDelta = Vector2.zero;
+            }
+
+            if (_pageIndicator == null)
+            {
+                var pgGo = new GameObject("PageIndicator", typeof(RectTransform));
+                pgGo.transform.SetParent(parent, false);
+                var rt = pgGo.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.5f, 1f);
+                rt.anchorMax = new Vector2(0.5f, 1f);
+                rt.pivot = new Vector2(0.5f, 1f);
+                rt.anchoredPosition = new Vector2(0f, -10f);
+                rt.sizeDelta = new Vector2(110f, 30f);
+                // background for indicator for readability
+                var bg = pgGo.AddComponent<Image>();
+                bg.color = new Color(0f, 0f, 0f, 0.45f);
+                var outlinePg = pgGo.AddComponent<Outline>();
+                outlinePg.effectColor = new Color(1f, 1f, 1f, 0.08f);
+                outlinePg.effectDistance = new Vector2(1f, -1f);
+                var pageTextGo = new GameObject("PageText", typeof(RectTransform));
+                pageTextGo.transform.SetParent(pgGo.transform, false);
+                _pageIndicator = pageTextGo.AddComponent<TextMeshProUGUI>();
+                if (font != null) _pageIndicator.font = font;
+                if (fontMaterial != null) _pageIndicator.fontSharedMaterial = fontMaterial;
+                var textRt = _pageIndicator.GetComponent<RectTransform>();
+                textRt.anchorMin = Vector2.zero; textRt.anchorMax = Vector2.one; textRt.sizeDelta = Vector2.zero;
+                _pageIndicator.fontSize = 14;
+                _pageIndicator.alignment = TextAlignmentOptions.Center;
+                _pageIndicator.color = Color.white;
+                _pageIndicator.raycastTarget = false;
+                _pageIndicator.enableAutoSizing = false;
+                _pageIndicator.fontStyle = FontStyles.Bold;
+            }
+        }
+
+        private void CalculateItemsPerPage()
+        {
+            _itemsPerPage = 0;
+            if (_selectors.Count == 0)
+                return;
+
+            var parentRt = VehicleSelection.transform.parent as RectTransform;
+            if (parentRt == null)
+            {
+                _itemsPerPage = _selectors.Count;
+                return;
+            }
+
+            float availableWidth = parentRt.rect.width;
+            if (availableWidth <= 0)
+                availableWidth = Screen.width * 0.8f;
+
+            // estimate selector width from first selector RectTransform or fallback
+            var firstRt = _selectors[0].GetComponent<RectTransform>();
+            float selWidth = firstRt != null ? (firstRt.sizeDelta.x != 0 ? firstRt.sizeDelta.x : firstRt.rect.width) : 150f;
+            if (selWidth <= 0) selWidth = 150f;
+
+            _itemsPerPage = Math.Max(1, (int)(availableWidth / selWidth));
+        }
+
+        private void UpdatePage()
+        {
+            if (_itemsPerPage <= 0)
+                CalculateItemsPerPage();
+
+            int total = _selectors.Count;
+            int totalPages = (int)Math.Ceiling(total / (double)_itemsPerPage);
+            if (_currentPage < 0) _currentPage = 0;
+            if (_currentPage >= totalPages) _currentPage = Math.Max(0, totalPages - 1);
+
+            int start = _currentPage * _itemsPerPage;
+            int end = Math.Min(start + _itemsPerPage, total);
+            for (int i = 0; i < total; i++)
+            {
+                _selectors[i].gameObject.SetActive(i >= start && i < end);
+            }
+
+            if (_prevPageButton != null)
+                _prevPageButton.interactable = _currentPage > 0;
+            if (_nextPageButton != null)
+                _nextPageButton.interactable = _currentPage < totalPages - 1;
+
+            if (_pageIndicator != null)
+                _pageIndicator.text = totalPages <= 1 ? string.Empty : $"Page {_currentPage + 1}/{totalPages}";
         }
 
         private void PopulateDeviceHeaders()
@@ -265,7 +452,6 @@ namespace BYOJoystick.UI
                 BYOJ.StartListeningForJoystickBinding(binding);
                 BYOJ.ListenForModifierPresses(binding);
             }
-
             cell.UpdateText();
 
             // Reload the active manager if anything to do with modifiers was changed to ensure correct behaviour

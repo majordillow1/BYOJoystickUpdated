@@ -21,10 +21,23 @@ namespace BYOJoystick.Managers.Base
             if (VehicleControlManifest == null)
                 throw new InvalidOperationException("VehicleControlManifest not found.");
 
-            // Diagnostic: if mapping F-16 or A-10D, dump manifest and interactables for troubleshooting
+            // If this is the A-10D, F-16, F-22, or AH-6, print a full control manifest debug dump to help map controls
+            if (GameName == "A-10D" || GameName == "F-16" || GameName == "F-22" || GameName == "AH-6 Little Bird")
+            {
+                try
+                {
+                    DebugPrintManifest();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log($"DebugPrintManifest failed for {GameName}: {ex.Message}");
+                }
+            }
+
+            // Diagnostic: if mapping F-16, F-22, A-10D, or AH-6, dump manifest and interactables for troubleshooting
             try
             {
-                if (GameName == "F-16" || GameName == "A-10D")
+                if (GameName == "F-16" || GameName == "F-22" || GameName == "A-10D" || GameName == "AH-6 Little Bird")
                 {
                     Plugin.Log($"--- {GameName} DIAGNOSTIC DUMP START ---");
                     var vcm = VehicleControlManifest;
@@ -64,17 +77,38 @@ namespace BYOJoystick.Managers.Base
                         if (vcm.joysticks != null)
                         {
                             for (int i = 0; i < vcm.joysticks.Length; i++)
-                                Plugin.Log($"vcm.joystick[{i}] = {(vcm.joysticks[i] != null ? GetInteractable(vcm.joysticks[i]).GetControlReferenceName() : "<null>")}");
+                            {
+                                if (vcm.joysticks[i] != null)
+                                {
+                                    var interactable = GetInteractable(vcm.joysticks[i]);
+                                    Plugin.Log($"vcm.joystick[{i}] = {interactable.GetControlReferenceName()} [VRJoystick] at {GetGameObjectPath(vcm.joysticks[i].gameObject)}");
+                                }
+                                else
+                                {
+                                    Plugin.Log($"vcm.joystick[{i}] = <null>");
+                                }
+                            }
                         }
                     }
 
                     var interactables = Vehicle.GetComponentsInChildren<VRInteractable>(true);
-                    Plugin.Log($"Found {interactables.Length} VRInteractables. Listing names and paths:");
+                    Plugin.Log($"Found {interactables.Length} VRInteractables. Listing names, types, and paths:");
                     foreach (var it in interactables)
                     {
                         string name = "<null>";
                         try { name = it.GetControlReferenceName(); } catch { }
-                        Plugin.Log($"Interactable: '{name}' at path: {GetGameObjectPath(it.gameObject)}");
+                        
+                        // Detect component type
+                        string componentType = "Unknown";
+                        if (it.GetComponent<VRButton>() != null) componentType = "VRButton";
+                        else if (it.GetComponent<VRLever>() != null) componentType = "VRLever";
+                        else if (it.GetComponent<VRTwistKnob>() != null) componentType = "VRTwistKnob";
+                        else if (it.GetComponent<VRTwistKnobInt>() != null) componentType = "VRTwistKnobInt";
+                        else if (it.GetComponent<VRThrottle>() != null) componentType = "VRThrottle";
+                        else if (it.GetComponent<VRJoystick>() != null) componentType = "VRJoystick";
+                        else if (it.GetComponent<VRDoor>() != null) componentType = "VRDoor";
+                        
+                        Plugin.Log($"Interactable: '{name}' [{componentType}] at path: {GetGameObjectPath(it.gameObject)}");
                     }
 
                     Plugin.Log($"--- {GameName} DIAGNOSTIC DUMP END ---");
@@ -121,6 +155,60 @@ namespace BYOJoystick.Managers.Base
             Plugin.Log($"Controls mapped for {GameName}.");
         }
 
+        public void DebugPrintManifest()
+        {
+            try
+            {
+                var vcm = VehicleControlManifest;
+                if (vcm == null)
+                {
+                    Plugin.Log("VehicleControlManifest is null");
+                    return;
+                }
+
+                Plugin.Log($"--- DEBUG MANIFEST FOR {GameName} START ---");
+                Plugin.Log($"Buttons: {vcm.buttons?.Length ?? 0}");
+                Plugin.Log($"Levers: {vcm.levers?.Length ?? 0}");
+                Plugin.Log($"TwistKnobs: {vcm.twistKnobs?.Length ?? 0}");
+                Plugin.Log($"TwistKnobInts: {vcm.twistKnobInts?.Length ?? 0}");
+                Plugin.Log($"PowerLevers: {vcm.powerLevers?.Length ?? 0}");
+                Plugin.Log($"Collectives: {vcm.collectives?.Length ?? 0}");
+                Plugin.Log($"Joysticks: {vcm.joysticks?.Length ?? 0}");
+                Plugin.Log($"Throttle present: {(vcm.throttle != null)}");
+
+                if (vcm.buttons != null)
+                {
+                    for (int i = 0; i < vcm.buttons.Length; i++)
+                        Plugin.Log($"vcm.button[{i}] = {(vcm.buttons[i] != null ? GetInteractable(vcm.buttons[i]).GetControlReferenceName() : "<null>")}");
+                }
+
+                var interactables = Vehicle.GetComponentsInChildren<VRInteractable>(true);
+                Plugin.Log($"Found {interactables.Length} VRInteractables. Listing names, types, and paths:");
+                foreach (var it in interactables)
+                {
+                    string name = "<null>";
+                    try { name = it.GetControlReferenceName(); } catch { }
+                    
+                    // Detect component type
+                    string componentType = "Unknown";
+                    if (it.GetComponent<VRButton>() != null) componentType = "VRButton";
+                    else if (it.GetComponent<VRLever>() != null) componentType = "VRLever";
+                    else if (it.GetComponent<VRTwistKnob>() != null) componentType = "VRTwistKnob";
+                    else if (it.GetComponent<VRTwistKnobInt>() != null) componentType = "VRTwistKnobInt";
+                    else if (it.GetComponent<VRThrottle>() != null) componentType = "VRThrottle";
+                    else if (it.GetComponent<VRJoystick>() != null) componentType = "VRJoystick";
+                    else if (it.GetComponent<VRDoor>() != null) componentType = "VRDoor";
+                    
+                    Plugin.Log($"Interactable: '{name}' [{componentType}] at path: {GetGameObjectPath(it.gameObject)}");
+                }
+                Plugin.Log($"--- DEBUG MANIFEST FOR {GameName} END ---");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log($"DebugPrintManifest failed: {ex.Message}");
+            }
+        }
+
         private static string GetGameObjectPath(GameObject go)
         {
             if (go == null)
@@ -148,6 +236,44 @@ namespace BYOJoystick.Managers.Base
                 return null;
             var component = GetComponent<T>(interactable);
             return ToControl<T, U>(name, interactable, component);
+        }
+
+        // Attempts to find an interactable by exact name first, then by substring (case-insensitive) as a fallback.
+        protected U ByNamePartial<T, U>(string name, string root, bool nullable, bool checkName, int idx) where T : MonoBehaviour where U : class, IControl
+        {
+            if (TryGetExistingControl<U>(name, out var existingControl))
+                return existingControl;
+            var rootObject = root == null ? Vehicle : GetGameObject(root, nullable);
+            if (rootObject == null)
+                return null;
+            var interactables = rootObject == Vehicle ? Interactables : rootObject.GetComponentsInChildren<VRInteractable>(true);
+            var interactable = FindInteractable(name, interactables, nullable);
+            if (interactable == null)
+            {
+                interactable = FindInteractablePartial(name, interactables, nullable);
+                if (interactable == null)
+                    return null;
+            }
+            var component = GetComponent<T>(interactable);
+            return ToControl<T, U>(name, interactable, component);
+        }
+
+        protected static VRInteractable FindInteractablePartial(string name, VRInteractable[] interactables, bool canBeNull = false)
+        {
+            // case-insensitive contains match
+            for (int i = 0; i < interactables.Length; i++)
+            {
+                string ctrlName;
+                try { ctrlName = interactables[i].GetControlReferenceName(); } catch { ctrlName = null; }
+                if (string.IsNullOrEmpty(ctrlName))
+                    continue;
+                if (ctrlName.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return interactables[i];
+            }
+
+            if (canBeNull)
+                return null;
+            throw new InvalidOperationException($"Interactable containing '{name}' not found.");
         }
 
         protected U ByType<T, U>(string name, string root, bool nullable, bool checkName, int idx) where T : MonoBehaviour where U : class, IControl
@@ -244,6 +370,143 @@ namespace BYOJoystick.Managers.Base
                 throw new InvalidOperationException($"Interactable {interactable.GetControlReferenceName()} does not match {name}.");
 
             return ToControl<T, U>(name, interactable, component);
+        }
+
+        // Finds a manifest entry by interactable name across all manifest arrays and returns the corresponding control.
+        // This allows mapping to the control referenced in the VehicleControlManifest even when the index is unknown.
+        protected U ByManifestName<U>(string name, string root, bool nullable, bool checkName, int idx) where U : class, IControl
+        {
+            if (TryGetExistingControl<U>(name, out var existingControl))
+                return existingControl;
+
+            var vcm = VehicleControlManifest;
+            if (vcm == null)
+            {
+                if (nullable)
+                    return null;
+                throw new InvalidOperationException("VehicleControlManifest not set.");
+            }
+
+            // Search buttons
+            if (vcm.buttons != null)
+            {
+                for (int i = 0; i < vcm.buttons.Length; i++)
+                {
+                    var comp = vcm.buttons[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRButton, U>(name, interactable, comp);
+                }
+            }
+
+            // Search levers
+            if (vcm.levers != null)
+            {
+                for (int i = 0; i < vcm.levers.Length; i++)
+                {
+                    var comp = vcm.levers[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRLever, U>(name, interactable, comp);
+                }
+            }
+
+            // Search twist knobs
+            if (vcm.twistKnobs != null)
+            {
+                for (int i = 0; i < vcm.twistKnobs.Length; i++)
+                {
+                    var comp = vcm.twistKnobs[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRTwistKnob, U>(name, interactable, comp);
+                }
+            }
+
+            // Search twist knob ints
+            if (vcm.twistKnobInts != null)
+            {
+                for (int i = 0; i < vcm.twistKnobInts.Length; i++)
+                {
+                    var comp = vcm.twistKnobInts[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRTwistKnobInt, U>(name, interactable, comp);
+                }
+            }
+
+            // Search doors
+            if (vcm.doors != null)
+            {
+                for (int i = 0; i < vcm.doors.Length; i++)
+                {
+                    var comp = vcm.doors[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRDoor, U>(name, interactable, comp);
+                }
+            }
+
+            // Search powerLevers
+            if (vcm.powerLevers != null)
+            {
+                for (int i = 0; i < vcm.powerLevers.Length; i++)
+                {
+                    var comp = vcm.powerLevers[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRThrottle, U>(name, interactable, comp);
+                }
+            }
+
+            // Search collectives
+            if (vcm.collectives != null)
+            {
+                for (int i = 0; i < vcm.collectives.Length; i++)
+                {
+                    var comp = vcm.collectives[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRThrottle, U>(name, interactable, comp);
+                }
+            }
+
+            // Search joysticks
+            if (vcm.joysticks != null)
+            {
+                for (int i = 0; i < vcm.joysticks.Length; i++)
+                {
+                    var comp = vcm.joysticks[i];
+                    if (comp == null) continue;
+                    var interactable = GetInteractable(comp);
+                    if (interactable.GetControlReferenceName() != name) continue;
+                    return ToControl<VRJoystick, U>(name, interactable, comp);
+                }
+            }
+
+            // Throttle singular
+            if (vcm.throttle != null)
+            {
+                try
+                {
+                    var interactable = GetInteractable(vcm.throttle);
+                    if (interactable.GetControlReferenceName() == name)
+                        return ToControl<VRThrottle, U>(name, interactable, vcm.throttle);
+                }
+                catch { }
+            }
+
+            if (nullable)
+                return null;
+
+            throw new InvalidOperationException($"Manifest control {name} not found.");
         }
 
         protected bool TryGetExistingControl<U>(string name, out U control) where U : class, IControl

@@ -60,7 +60,9 @@ namespace BYOJoystick
             AddManager(new FA26BManager());
             AddManager(new F45AManager());
             AddManager(new F16Manager());
+            AddManager(new F22Manager());
             AddManager(new A10DManager());
+            AddManager(new AH6Manager());
             AddManager(new AH94FrontManager());
             AddManager(new AH94RearManager());
             AddManager(new T55FrontManager());
@@ -201,7 +203,7 @@ namespace BYOJoystick
                 if (ActiveManager == null)
                     SelectManagerMultiPlayer();
             }
-            else if (ActiveManager == null || (ActiveManager != null && ActiveManager.IsMulticrew && _spSeatSwitcher.isA != ActiveManager.IsSeatA))
+            else if (ActiveManager == null || (ActiveManager != null && ActiveManager.IsMulticrew && (_spSeatSwitcher == null || _spSeatSwitcher.isA != ActiveManager.IsSeatA)))
                 SelectManagerSinglePlayer();
         }
 
@@ -279,10 +281,12 @@ namespace BYOJoystick
                 "F/A-26B" => "FA26B",
                 "F-45A"   => "F45A",
                 "F-16"    => "F16",
+                "F-22A"   => "F22",
                 "AH-94"   => isSeatA ? "AH94Rear" : "AH94Front",
                 "T-55"    => isSeatA ? "T55Front" : "T55Rear",
                 "EF-24G"  => isSeatA ? "EF24GFront" : "EF24GRear",
                 "A-10D"   => "A10D",
+                "AH-6 Little Bird" => "AH6",
                  _         => throw new InvalidOperationException($"Vehicle {vehicleName} not supported")
             };
         }
@@ -328,6 +332,14 @@ namespace BYOJoystick
             Plugin.Log($"Setting active manager to {manager.GameName}...");
 
             manager.MapControls(vehicle);
+            try
+            {
+                manager.DebugPrintManifest();
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log($"Failed to debug print manifest: {ex.Message}");
+            }
 
             Plugin.Log("Initialising bindings...");
             var keyboardBindings = ConfigManager.GetKeyboardBindings(manager.ShortName);
